@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title><%= title %> Apex Charts</title>
+  <!-- <link rel='stylesheet' href='/stylesheets/style.css' /> -->
+</head>
+
+<body>
+  <center>
+    <h1> <%= title %> Apex charts </h1>
+  </center>
+  <div id="mychart"></div>
+
+</body>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<!-- <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.4.0.min.js"></script> -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.5/socket.io.min.js"></script>
+
+<script>
+  var socket = io.connect('http://localhost:8000');
+  var timeArray = [];
+  var speedArray = [];
+
+  var apiUpdatedData = [];
+  var options = [];
+  var chart = [];
+
+  var newTimeAndSpeed = [];
+
+  getChart();
+
+  function getChart() {
+    var myPromise = new Promise(function (resolve, reject) {
+      if (apiUpdatedData.length == 0) {
+        var time = "<%= data[0] %>"
+        var speed = "<%= data[1] %>"
+      } else {
+        var time = apiUpdatedData[0].toString()
+        var speed = apiUpdatedData[1].toString()
+      }
+
+      timeArray = []
+      speedArray = []
+      newTimeAndSpeed = []
+      timeArray = time.split(',');
+      speedArray = speed.split(',')
+
+      for (let i = 0; i < timeArray.length; i++) {
+        newTimeAndSpeed.push({ x: (timeArray[i]), y: parseInt(speedArray[i]) });
+      }
+
+
+
+
+      var lastDate = 0;
+      var data = []
+      function getDayWiseTimeSeries(baseval, count, yrange) {
+        var i = 0;
+        while (i < newTimeAndSpeed.length) {
+          var x = newTimeAndSpeed[i].x
+          x = new Date(x)
+          x = x.getHours() + ':' + x.getMinutes() + ':' + x.getSeconds() + ':' + x.getMilliseconds();
+          var y = newTimeAndSpeed[i].y;
+          data.push({
+            x, y
+          });
+          i++;
+        }
+      }
+
+      getDayWiseTimeSeries(new Date(newTimeAndSpeed[0].x).getTime(), 10, {
+        min: 10,
+        max: 90
+      })
+
+      // function getNewSeries(baseval, yrange) {
+      //     var newDate = baseval + 86400000;
+      //     lastDate = newDate
+      //     data.push({
+      //         x: newDate,
+      //         y: Math.floor(Math.random() * (yrange.max - yrange.min + 1)) + yrange.min
+      //     })
+      // }
+
+      // function resetData(){
+      //     data = data.slice(data.length - 10, data.length);
+      // }
+
+      var options = {
+        chart: {
+          height: 350,
+          type: 'line',
+          animations: {
+            enabled: true,
+            easing: 'linear',
+            dynamicAnimation: {
+              speed: 2000
+            }
+          },
+          toolbar: {
+            show: true
+          },
+          zoom: {
+            enabled: false
+          }
+        },
+        dataLabels: {
+          enabled: false
+        },
+        stroke: {
+          curve: 'smooth'
+        },
+        series: [{
+          data: data
+        }],
+        title: {
+          text: 'Dynamic Updating Chart',
+          align: 'left'
+        },
+        markers: {
+          size: 1
+        },
+        xaxis: {
+          type: 'string',
+          range: 777600000,
+        },
+        yaxis: {
+          max: 100
+        },
+        legend: {
+          show: false
+        },
+      }
+
+      var chart = new ApexCharts(
+        document.querySelector("#mychart"),
+        options
+      );
+
+      chart.render();
+
+      var dataPointsLength = 10;
+
+      // window.setInterval(function () {
+      //     getNewSeries(lastDate, {
+      //         min: 10,
+      //         max: 90
+      //     })
+
+
+
+      // every 60 seconds, we reset the data 
+      // window.setInterval(function() {
+      //     resetData()
+      //     chart.updateSeries([{
+      //         data
+      //     }], false, true)
+      // }, 60000)
+
+
+
+      // update new data 
+      socket.on('updateData', function (data) {
+        timeArray = data[0];
+        speedArray = data[1];
+        newTimeAndSpeed = []
+
+        for (let i = 0; i < timeArray.length; i++) {
+          x = new Date(timeArray[i])
+          timeArray[i] = x.getHours() + ':' + x.getMinutes() + ':' + x.getSeconds() + ':' + x.getMilliseconds();
+          newTimeAndSpeed.push({ x: (timeArray[i]), y: parseInt(speedArray[i]) });
+        }
+
+        newTimeAndSpeed = [{ x: "21:16:47:400", y: 100 },
+        { x: "21:16:47:700", y: 90 },
+        { x: "21:16:48:0", y: 70 },
+        { x: "21:16:48:300", y: 40 },
+        { x: "21:16:48:600", y: 100 },
+        { x: "21:16:48:900", y: 10 },
+        { x: "21:16:49:200", y: 20 },
+        { x: "21:16:49:500", y: 50 },
+        { x: "21:16:49:800", y: 20 },
+        { x: "21:16:50:100", y: 10 },
+        { x: "21:16:50:400", y: 50 },
+        { x: "21:16:50:700", y: 90 },
+        { x: "21:16:51:0", y: 20 },
+        { x: "21:16:51:300", y: 10 },
+        { x: "21:16:51:600", y: 90 },
+        ]
+
+        setInterval(function () {
+          chart.updateSeries([{
+            data: newTimeAndSpeed
+          }])
+        }, 5000)
+
+      });
+    });
+    return myPromise
+  }
+
+</script>
+
+</html>
